@@ -9,8 +9,8 @@ import (
 
 func GetUsrs() *BinanceUser {
 	binance := new(BinanceUser)
-	binance.AccessKey = "S4LcIeMURpw9dUGBINKxJ2so7tEfF9seGWOZqf9f9FKU3ffDEohv5Xgx9dgL2Kzs"
-	binance.SecritKey = "f08snk1B2BJfRL2gXPF30EenHGCD1KQWFeaCW5HUPC3a9eGR4SM8NRx5bOLQeP5P"
+	binance.AccessKey = ""
+	binance.SecritKey = ""
 	return binance
 }
 
