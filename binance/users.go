@@ -9,6 +9,13 @@ import (
 type BinanceUser struct {
 	AccessKey string
 	SecritKey string
+	Client    *futures.Client
+}
+
+func (ty *BinanceUser) Init(apikey, seckey string) {
+	ty.AccessKey = apikey
+	ty.SecritKey = seckey
+	ty.Client = futures.NewClient(apikey, seckey)
 }
 
 // 웹소켓 리슨키
@@ -16,8 +23,7 @@ type BinanceUser struct {
 // StartUserStreamService // (listenKey string, err error)
 // NewStartUserStreamService
 func (ty *BinanceUser) GetStartUserStreamService() (string, error) {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	res, err := bin.NewStartUserStreamService().Do(context.Background())
+	res, err := ty.Client.NewStartUserStreamService().Do(context.Background())
 	return res, err
 }
 
@@ -25,8 +31,7 @@ func (ty *BinanceUser) GetStartUserStreamService() (string, error) {
 // https://fapi.binance.com/fapi/v1/leverageBracket?timestamp=1716615629894&signature=6bcdb2b8c69a65716a7f02a7ecf51505ac15df33e97e9b1897109b37cf9163c2
 func (ty *BinanceUser) GetLeverageBracket(symbol string) ([]*futures.LeverageBracket, error) {
 	// symbol := "BTCUSDT"
-	bin := futures.NewClient("", "")
-	res, err := bin.NewGetLeverageBracketService().
+	res, err := ty.Client.NewGetLeverageBracketService().
 		Symbol(symbol).
 		Do(context.Background())
 	return res, err
@@ -38,8 +43,7 @@ func (ty *BinanceUser) GetLeverageBracket(symbol string) ([]*futures.LeverageBra
 // DualSide(dualSide bool)
 // positionSide 변경하기
 func (ty *BinanceUser) GetChangePositionModeService(dualSide bool) error {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	err := bin.NewChangePositionModeService().DualSide(dualSide).Do(context.Background())
+	err := ty.Client.NewChangePositionModeService().DualSide(dualSide).Do(context.Background())
 	return err
 }
 
@@ -47,9 +51,26 @@ func (ty *BinanceUser) GetChangePositionModeService(dualSide bool) error {
 // https://fapi.binance.com/fapi/v2/balance?timestamp=1716615629897&signature=4e74aacd9b88b15d7bfa245b721d422cadcbf47ff0f36d7d4380ff02cebf4fdf
 // NewGetBalanceService (res []*Balance, err error)
 func (ty *BinanceUser) GetBalanceService() ([]*futures.Balance, error) {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	res, err := bin.NewGetBalanceService().Do(context.Background())
+	res, err := ty.Client.NewGetBalanceService().Do(context.Background())
 	return res, err
+}
+
+func (ty *BinanceUser) GetAvailableBalance(assets string) (string, error) {
+	// res, err := ty.Client.NewGetBalanceService().Do(context.Background())
+	// return res, err
+	var AvailableBalance string
+	res, err := ty.GetBalanceService()
+	if err != nil {
+		return "", err
+	}
+
+	for _, v := range res {
+		if v.Asset == assets {
+			AvailableBalance = v.AvailableBalance
+		}
+	}
+
+	return AvailableBalance, err
 }
 
 // 포지션 가져오기
@@ -60,8 +81,7 @@ func (ty *BinanceUser) GetBalanceService() ([]*futures.Balance, error) {
 	Pair(pair string)
 */
 func (ty *BinanceUser) GetPositionRiskService(symbol string) ([]*futures.PositionRisk, error) {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	service := bin.NewGetPositionRiskService()
+	service := ty.Client.NewGetPositionRiskService()
 	if symbol == "" {
 		service = service.Symbol(symbol)
 	}
@@ -75,13 +95,11 @@ func (ty *BinanceUser) GetPositionRiskService(symbol string) ([]*futures.Positio
 // Symbol(symbol string)
 // Pair(pair string)
 func (ty *BinanceUser) GetListOpenOrdersService(symbol string) ([]*futures.Order, error) {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	service := bin.NewListOpenOrdersService()
+	service := ty.Client.NewListOpenOrdersService()
 	if symbol == "" {
 		service = service.Symbol(symbol)
 	}
 	res, err := service.Do(context.Background())
-
 	return res, err
 }
 
@@ -190,8 +208,7 @@ func CreateOrderLimitMarket(args OpenOrder) *futures.CreateOrderService {
 
 // res *futures.CreateOrderResponse
 func (ty *BinanceUser) CreateOrderService(aa OrderType) (*futures.CreateOrderResponse, error) {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	service := bin.NewCreateOrderService()
+	service := ty.Client.NewCreateOrderService()
 
 	if aa.Symbol != "" {
 		service.Symbol(aa.Symbol)
@@ -238,8 +255,6 @@ func (ty *BinanceUser) CreateOrderService(aa OrderType) (*futures.CreateOrderRes
 }
 
 func (ty *BinanceUser) CreateMuiOrder(orders []*futures.CreateOrderService) (*futures.CreateBatchOrdersResponse, error) {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	res, err := bin.NewCreateBatchOrdersService().OrderList(orders).Do(context.Background())
+	res, err := ty.Client.NewCreateBatchOrdersService().OrderList(orders).Do(context.Background())
 	return res, err
-
 }

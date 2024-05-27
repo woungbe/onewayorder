@@ -2,15 +2,30 @@ package binance
 
 import (
 	"fmt"
+	"log"
 	"testing"
 
 	"github.com/adshao/go-binance/v2/futures"
+	"github.com/spf13/viper"
 )
 
+func GetEnv() (string, string) {
+	viper.SetConfigFile("../.env") // .env 파일 설정
+	viper.AutomaticEnv()           // 환경 변수를 자동으로 읽도록 설정
+	err := viper.ReadInConfig()
+	if err != nil {
+		log.Fatalf("Error reading config file, %s", err)
+	}
+
+	accKey := viper.GetString("AccessKey")
+	seckey := viper.GetString("SecretKey")
+	return accKey, seckey
+}
+
 func GetUsrs() *BinanceUser {
+	AccessKey, SecritKey := GetEnv()
 	binance := new(BinanceUser)
-	binance.AccessKey = ""
-	binance.SecritKey = ""
+	binance.Init(AccessKey, SecritKey)
 	return binance
 }
 
@@ -43,7 +58,13 @@ func TestGetBalanceService(t *testing.T) {
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(res)
+
+	for _, v := range res {
+		// fmt.Println(v.AccountAlias, v.Asset, v.Balance, v.CrossWalletBalance, v.CrossUnPnl, v.AvailableBalance, v.MaxWithdrawAmount)
+		if v.Asset == "USDT" {
+			fmt.Println("v.AvailableBalance ", v.AvailableBalance)
+		}
+	}
 }
 
 func TestGetPositionRiskService(t *testing.T) {

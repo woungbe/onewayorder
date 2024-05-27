@@ -6,16 +6,25 @@ import (
 	"time"
 )
 
+// 일반 알림 로그
 func Log(aa ...interface{}) {
 	send := fmt.Sprint(aa...)
 	err := fmt.Errorf(send)
 	logErrorToFile("[LOG] ", err)
 }
 
+// Error 알림 로그
 func Error(aa ...interface{}) {
 	send := fmt.Sprint(aa...)
 	err := fmt.Errorf(send)
 	logErrorToFile("[Error] ", err)
+}
+
+// Error 알림 로그
+func ReturnError(aa ...interface{}) error {
+	Error(aa...)
+	tmp := fmt.Sprintln(aa...) // tmp
+	return fmt.Errorf(tmp)     // Errorf
 }
 
 func logErrorToFile(tag string, err error) {
