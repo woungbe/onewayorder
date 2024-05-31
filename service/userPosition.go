@@ -21,7 +21,7 @@ type UserPositionInfo struct {
 }
 
 // 주문 기입
-func (ty *UserPositionInfo) SetPosition(args *futures.PositionRisk) (string, *UserPositionInfo) {
+func (ty *UserPositionInfo) SetPosition(args *futures.PositionRisk) (string, UserPositionInfo) {
 	key := ty.setPositionKey(args.Symbol, args.PositionSide)
 	ty.Symbol = args.Symbol
 	ty.PositionSide = args.PositionSide
@@ -36,7 +36,7 @@ func (ty *UserPositionInfo) SetPosition(args *futures.PositionRisk) (string, *Us
 	ty.Leverage = ty.getLeverage(args.Leverage)
 	ty.UnRealizedProfit = args.UnRealizedProfit
 	ty.LiquidationPrice = args.LiquidationPrice
-	return key, ty
+	return key, *ty
 }
 
 // key 만들기

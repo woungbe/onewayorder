@@ -76,11 +76,14 @@ func TestGetPositionRiskService(t *testing.T) {
 }
 
 func TestGetListOpenOrdersService(t *testing.T) {
-	res, err := GetUsrs().GetListOpenOrdersService("ETHUSDT")
+	res, err := GetUsrs().GetListOpenOrdersService("")
 	if err != nil {
 		fmt.Println(err)
 	}
-	fmt.Println(res)
+
+	for _, v := range res {
+		fmt.Printf("%+v\n", v)
+	}
 }
 
 func TestCreateMuiOrder(t *testing.T) {
@@ -132,6 +135,27 @@ func TestCreateMuiOrderTakeProfit(t *testing.T) {
 	order.OrderType = futures.OrderTypeTakeProfitMarket // OrderTypeLimit OrderTypeMarket OrderTypeTakeProfitMarket
 	order.StopPrice = "0.210"
 	order.ClosePosition = true
+	order.WorkingType = futures.WorkingTypeContractPrice // WorkingTypeContractPrice
+	// createOrderService := CreateOrderLimitMarket(order)
+	// send = append(send, createOrderService)
+	// res, err := GetUsrs().CreateMuiOrder(send)
+	res, err := GetUsrs().CreateOrderService(order)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(res)
+}
+
+func TestCreateMuiOrderStopMarket(t *testing.T) {
+	// var send []*futures.CreateOrderService
+	var order OrderType
+	order.Symbol = "BIGTIMEUSDT"
+	order.Side = futures.SideTypeBuy                  // SideTypeBuy SideTypeSell
+	order.PositionSide = futures.PositionSideTypeLong // PositionSideTypeLong PositionSideTypeShort
+	order.OrderType = futures.OrderTypeStopMarket     // OrderTypeLimit OrderTypeMarket OrderTypeTakeProfitMarket
+	order.StopPrice = "0.2150"
+	order.Quantity = "500"
+	order.ClosePosition = false
 	order.WorkingType = futures.WorkingTypeContractPrice // WorkingTypeContractPrice
 	// createOrderService := CreateOrderLimitMarket(order)
 	// send = append(send, createOrderService)

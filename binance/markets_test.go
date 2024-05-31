@@ -14,12 +14,20 @@ func TestMarkets(t *testing.T) {
 	}
 
 	for _, v := range res.Symbols {
-		fmt.Printf("LotSizeFilter %+v\n", JsonData(v.LotSizeFilter()))
 		fmt.Printf("PriceFilter %+v\n", JsonData(v.PriceFilter()))
 		fmt.Printf("PercentPriceFilter %+v\n", JsonData(v.PercentPriceFilter()))
 		fmt.Printf("MarketLotSizeFilter %+v\n", JsonData(v.MarketLotSizeFilter()))
 		fmt.Printf("MaxNumOrdersFilter %+v\n", JsonData(v.MaxNumOrdersFilter()))
 		fmt.Printf("MaxNumAlgoOrdersFilter %+v\n", JsonData(v.MaxNumAlgoOrdersFilter()))
+		fmt.Printf("MIN_NOTIONAL %+v\n", JsonData(v.MinNotionalFilter()))
+
+		// minnotmal := v.MinNotionalFilter()
+		// fmt.Println("minnotmal.Notional : ", minnotmal.Notional)
+
+		fmt.Printf("LotSizeFilter %+v\n", JsonData(v.LotSizeFilter()))
+		lotsize := v.LotSizeFilter()
+		fmt.Println("lotsize.MinQuantity : ", lotsize.MinQuantity)
+
 	}
 }
 

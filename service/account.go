@@ -7,6 +7,8 @@ import (
 	"onewayorder/errors"
 	"onewayorder/utils"
 	"time"
+
+	"github.com/adshao/go-binance/v2/futures"
 )
 
 type callBackFunc_onStatusChange func(nStatus int)     //상태 변경 콜백 함수
@@ -26,14 +28,15 @@ type callBackFunc_onExpiredOrder func(Symbol string, PositionSide string, Side s
 type callBackFunc_onTradeOrder func(ClientOrderID string, Symbol string, PositionSide string, Side string, MarginType bool, Leverage int, TradeType string, closeOrder bool, AvgPrice string, EntryPrice string, tradeQty string, Commission string, RealizedPnL string, TradeTime int64) //체결 이벤트
 
 type BinanceAccount struct {
-	mApikey    string // 유저 API 키
-	mApiSeckey string // 유저 시크릿키
-	mListenkey string // 웹소켓 리슨키
+	mApikey      string // 유저 API 키
+	mApiSeckey   string // 유저 시크릿키
+	mListenkey   string // 웹소켓 리슨키
+	ExchangeInfo []futures.Symbol
 
-	mUserBalance      string                           // USDT 발란스
-	mUserOpenOrders   map[int64]*UserOpenOrder         // 오픈정보
-	mUserPositions    map[string]*UserPositionInfo     // 포지션
-	mUserLeverageInfo map[string]*UserPairLeverageInfo // 레버리지 및 마진타입 정보
+	mUserBalance      string                          // USDT 발란스
+	mUserOpenOrders   map[int64]UserOpenOrder         // 오픈정보
+	mUserPositions    map[string]UserPositionInfo     // 포지션
+	mUserLeverageInfo map[string]UserPairLeverageInfo // 레버리지 및 마진타입 정보
 
 	bReconnecting      bool  // 자동 재접속중인가.
 	bAutoReconnectMode bool  // true = 자동 연결 사용, false= 자동연결 미사용
@@ -60,6 +63,7 @@ type BinanceAccount struct {
 	mCD_ExpiredOrder      callBackFunc_onExpiredOrder      //주문 만료
 	mCD_TradeOrder        callBackFunc_onTradeOrder        //체결이벤트
 
+	mBotObject []InterfaceBot // 봇 리스트 정리 - 롱봇 숏봇 상관없지 ?...
 }
 
 func (ty *BinanceAccount) Init(ApiKey, ApiSeceryKey string) {
@@ -67,9 +71,9 @@ func (ty *BinanceAccount) Init(ApiKey, ApiSeceryKey string) {
 	ty.mApiSeckey = ApiSeceryKey
 	ty.mListenkey = ""
 
-	ty.mUserOpenOrders = make(map[int64]*UserOpenOrder)
-	ty.mUserPositions = make(map[string]*UserPositionInfo)
-	ty.mUserLeverageInfo = make(map[string]*UserPairLeverageInfo)
+	ty.mUserOpenOrders = make(map[int64]UserOpenOrder)
+	ty.mUserPositions = make(map[string]UserPositionInfo)
+	ty.mUserLeverageInfo = make(map[string]UserPairLeverageInfo)
 
 	ty.bReconnecting = true      // 자동 재접속중
 	ty.bAutoReconnectMode = true // 자동 연결 사용
@@ -88,7 +92,41 @@ func (ty *BinanceAccount) Init(ApiKey, ApiSeceryKey string) {
 		errors.Error("Crit Panic", "Init - ty.LoadAccountInfo  ", b)
 		return
 	}
+}
 
+// 벨런스 가져오기
+func (ty *BinanceAccount) GetUserBalance() string {
+	return ty.mUserBalance
+}
+
+// 오픈오더 가져오기
+func (ty *BinanceAccount) GetUserOpenOrders() map[int64]UserOpenOrder {
+	return ty.mUserOpenOrders
+}
+
+// 포지션 가져오기
+func (ty *BinanceAccount) GetUserPositions() map[string]UserPositionInfo {
+	return ty.mUserPositions
+}
+
+// 레버리지 가져오기
+func (ty *BinanceAccount) GetUserLeverageInfo() map[string]UserPairLeverageInfo {
+	return ty.mUserLeverageInfo
+}
+
+func (ty *BinanceAccount) SetBotList(args map[string]interface{}) {
+	if val, ok := args["BotName"].(string); ok {
+		if val == "OnewayBot" {
+			tmp := new(OnewayBot)
+			b, err := tmp.SetConfigData(args)
+			if err != nil {
+				fmt.Println(err)
+			}
+			if b {
+				ty.mBotObject = append(ty.mBotObject, tmp)
+			}
+		}
+	}
 }
 
 // getWSkey
@@ -149,6 +187,19 @@ func (ty *BinanceAccount) onUnconnected() {
 
 func (ty *BinanceAccount) messagePasering(msg []byte) {
 
+}
+
+// exchangeInfo
+func (ty *BinanceAccount) GetExchangeInfo() error {
+	// ExchangeInfo []futures.Symbol
+
+	exchangeInfo, err := binance.GetExchangeInfo()
+	if err != nil {
+		return err
+	}
+
+	ty.ExchangeInfo = exchangeInfo.Symbols
+	return nil
 }
 
 // 객체 상태 정보
@@ -275,7 +326,7 @@ func (ty *BinanceAccount) reconnectingUserWS() {
 					ty.setStatus(-2)
 					return
 				}
-				bOp := ty.getOpenOrderList()
+				bOp := ty.GetOpenOrderList()
 				if !bOp {
 					if ty.mCB_AccountErrorClose != nil {
 						ty.mCB_AccountErrorClose("미체결정보 로드 오류")
@@ -310,7 +361,7 @@ func (ty *BinanceAccount) LoadAccountInfo() bool {
 		ty.setStatus(-1)
 		return false
 	}
-	bOp := ty.getOpenOrderList()
+	bOp := ty.GetOpenOrderList()
 	if !bOp {
 		ty.setStatus(-1)
 		return false
@@ -338,7 +389,7 @@ func (ty *BinanceAccount) getAccountInfo() bool {
 }
 
 // 오픈 리스트 가져오기
-func (ty *BinanceAccount) getOpenOrderList() bool {
+func (ty *BinanceAccount) GetOpenOrderList() bool {
 	defer func() {
 		if err := recover(); err != nil {
 			errors.Error("Crit Panic", "getOpenOrderList  ", err)
@@ -352,6 +403,7 @@ func (ty *BinanceAccount) getOpenOrderList() bool {
 		return false
 	}
 
+	ty.mUserOpenOrders = make(map[int64]UserOpenOrder)
 	for _, v := range res {
 		tmpOrder := new(UserOpenOrder)
 		ty.mUserOpenOrders[v.OrderID] = tmpOrder.SetOpenOrder(*v)
@@ -361,7 +413,7 @@ func (ty *BinanceAccount) getOpenOrderList() bool {
 }
 
 // 포지션
-func (ty *BinanceAccount) getPositionList() bool {
+func (ty *BinanceAccount) GetPositionList() bool {
 	defer func() {
 		if err := recover(); err != nil {
 			errors.Error("Crit Panic", "getOpenOrderList  ", err)
@@ -377,8 +429,65 @@ func (ty *BinanceAccount) getPositionList() bool {
 	for _, v := range res {
 		tmp := new(UserPositionInfo)
 		key, posinfo := tmp.SetPosition(v)
+		// symbol + "_" + posside  ex) NOTUSDT_SHORT
 		ty.mUserPositions[key] = posinfo
 	}
 
 	return false
+}
+
+/*
+	콜백 함수 설정
+*/
+
+func (ty *BinanceAccount) SetCallbackFunc_StatusChange(cb callBackFunc_onStatusChange) {
+	ty.mCB_ChangeStatus = cb
+}
+
+func (ty *BinanceAccount) SetCallbackFunc_AccountErrorClose(cb callBackFunc_onAccountErrorClose) {
+	ty.mCB_AccountErrorClose = cb
+}
+
+func (ty *BinanceAccount) SetCallbackFunc_Leverage(cb callBackFunc_onLeverage) {
+	ty.mCD_Leverage = cb
+}
+
+// 마진 타입 변경
+func (ty *BinanceAccount) SetCallbackFunc_MarginTypeChange(cb callBackFunc_onMarginTypeChange) {
+	ty.mCD_MarginTypeChange = cb
+}
+
+// 포지션 청산
+func (ty *BinanceAccount) SetCallbackFunc_PositionClose(cb callBackFunc_onPositionClose) {
+	ty.mCD_PositionClose = cb
+}
+
+// 포지션 정보 업뎃
+func (ty *BinanceAccount) SetCallbackFunc_PositionUpdate(cb callBackFunc_onPositionUpdate) {
+	ty.mCD_PositionUpdate = cb
+}
+
+// 포지션 마진 변경
+func (ty *BinanceAccount) SetCallbackFunc_MarginTransfer(cb callBackFunc_onMarginTransfer) {
+	ty.mCD_MarginTransfer = cb
+}
+
+// 주문 추가
+func (ty *BinanceAccount) SetCallbackFunc_AddOpenOrder(cb callBackFunc_onAddOpenOrder) {
+	ty.mCD_AddOpenOrder = cb
+}
+
+// 주문 취소(완료)
+func (ty *BinanceAccount) SetCallbackFunc_CanceledOrder(cb callBackFunc_onCanceledOrder) {
+	ty.mCD_CanceledOrder = cb
+}
+
+// 주문 만료
+func (ty *BinanceAccount) SetCallbackFunc_ExpiredOrder(cb callBackFunc_onExpiredOrder) {
+	ty.mCD_ExpiredOrder = cb
+}
+
+// 체결이벤트
+func (ty *BinanceAccount) SetCallbackFunc_TradeOrder(cb callBackFunc_onTradeOrder) {
+	ty.mCD_TradeOrder = cb
 }

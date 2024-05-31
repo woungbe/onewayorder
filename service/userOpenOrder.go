@@ -15,7 +15,7 @@ type UserOpenOrder struct {
 }
 
 // 주문 기입
-func (ty *UserOpenOrder) SetOpenOrder(args futures.Order) *UserOpenOrder {
+func (ty *UserOpenOrder) SetOpenOrder(args futures.Order) UserOpenOrder {
 	ty.Symbol = args.Symbol
 	ty.OrderID = args.OrderID
 	ty.ClientOrderID = args.ClientOrderID
@@ -25,5 +25,5 @@ func (ty *UserOpenOrder) SetOpenOrder(args futures.Order) *UserOpenOrder {
 	ty.Amount = args.OrigQuantity
 	ty.Price = args.Price
 	ty.StopPrice = args.StopPrice
-	return ty
+	return *ty
 }
