@@ -403,6 +403,7 @@ func (ty *BinanceAccount) GetOpenOrderList() bool {
 		return false
 	}
 
+	// 초기화 시키고 등록 - set하는 것때문에 이렇게 함. mutax 등록하는 편이 좋음.
 	ty.mUserOpenOrders = make(map[int64]UserOpenOrder)
 	for _, v := range res {
 		tmpOrder := new(UserOpenOrder)

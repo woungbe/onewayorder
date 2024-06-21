@@ -82,16 +82,17 @@ func (ty *OnewayBot) SetConfigData(args map[string]interface{}) (bool, error) {
 	return true, nil
 }
 
+// 심볼별 최소설정저장 - 최소단위, 코인 소수점
 func (ty *OnewayBot) SetExChangeInfo() error {
-	for _, v := range ty.mbinanceAccount.ExchangeInfo {
-		if v.Symbol == ty.mConfigData.Symbol {
-			minnotmal := v.MinNotionalFilter()
-			lotsize := v.LotSizeFilter()
-			ty.NormalPrice = minnotmal.Notional
-			ty.CoinDecimal = lotsize.MinQuantity
-		}
-	}
-	return nil
+	// for _, v := range ty.mbinanceAccount.ExchangeInfo {
+	// 	if v.Symbol == ty.mConfigData.Symbol {
+	// 		minnotmal := v.MinNotionalFilter()
+	// 		lotsize := v.LotSizeFilter()
+	// 		ty.NormalPrice = minnotmal.Notional
+	// 		ty.CoinDecimal = lotsize.MinQuantity
+	// 	}
+	// }
+	// return nil
 }
 
 // 실행하기
@@ -135,24 +136,21 @@ func (ty *OnewayBot) Run() bool {
 
 // 미체결이 있는지 체크
 func (ty *OnewayBot) CheckOpenOrder() bool {
-	// var b bool = false
-	// 미체결 작업
-	// res, err := ty.mbinanceAccount.mBinanceAPI.GetListOpenOrdersService(ty.mConfigData.Symbol)
-	// 포지션 정보 갱신
-	b := ty.mbinanceAccount.GetOpenOrderList()
-	if b {
-		errors.Error("have a openorder")
-		return false
-	}
+	// 요청하고,
+	// b := ty.mbinanceAccount.GetOpenOrderList()
+	// if b {
+	// 	errors.Error("have a openorder")
+	// 	return false
+	// }
 
-	// 로드는 잘됐고
-	miorderList := ty.mbinanceAccount.GetUserOpenOrders()
-	for _, v := range miorderList {
-		if v.Symbol == ty.mConfigData.Symbol {
-			return true
-		}
-	}
-	return b
+	// // 로드하고,
+	// miorderList := ty.mbinanceAccount.GetUserOpenOrders()
+	// for _, v := range miorderList {
+	// 	if v.Symbol == ty.mConfigData.Symbol {
+	// 		return true
+	// 	}
+	// }
+	// return b
 }
 
 // 포지션이 있는지 체크
