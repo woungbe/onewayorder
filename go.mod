@@ -31,7 +31,6 @@ require (
 
 require (
 	github.com/bitly/go-simplejson v0.5.0 // indirect
-	github.com/kr/text v0.2.0 // indirect
 	github.com/spf13/viper v1.18.2
 	github.com/woungbe/utils v0.0.0-20240113081036-890dfa1c6b7b
 )

@@ -2,12 +2,14 @@ package main
 
 import (
 	"onewayorder/errors"
-	"onewayorder/utils"
+	"onewayorder/service"
+	util "onewayorder/util"
 )
 
 func main() {
+	util.RandInitSeed()
 
-	utils.RandInitSeed()
+	service.GetController().Init()
 
 	done := make(chan bool)
 	<-done

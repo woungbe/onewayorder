@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"onewayorder/binance"
 	"onewayorder/errors"
+	util "onewayorder/util"
 	"os"
 
 	"github.com/adshao/go-binance/v2/futures"
@@ -53,8 +54,14 @@ type BasicInfo struct {
 	leverage  string          // 레버리지
 	fleverage float64         // 레버리지 float64
 
-	MinNotion string // 최소 금액 USDT
-	MinSize   string // 코인 최소 수량 ex)
+	fNotionalPrice float64 // 최소 거래금액
+	fMaxPrice      float64 // 최대 가격
+	fMinPrice      float64 // 최소 가격
+	fTickSizePrice float64 // 가격 tickSize
+	fMaxQuantity   float64 // 최대 코인 수량
+	fMinQuantity   float64 // 최소 코인 수량
+	fStepSize      float64 // 코인 tickSize
+
 }
 
 // 초기화 설정
@@ -71,19 +78,78 @@ func (ty *BasicInfo) Init(m *BinanceAccount, symbol string, Leverage string) {
 	}
 
 	ty.fleverage = fleverage
+}
 
+// 심볼 변경
+func (ty *BasicInfo) SetSymbol(symbol string) {
+	ty.symbol = symbol
+}
+
+// 레버리지 변경
+func (ty *BasicInfo) SetLeverage(Leverage string) {
+	ty.leverage = Leverage
+	fleverage, err := utils.Float64(Leverage)
+	if err != nil {
+		fmt.Println(err)
+		os.Exit(1)
+		return
+	}
+	ty.fleverage = fleverage
 }
 
 // 최소단위, 코인 소수점 가져오기
-func (ty *BasicInfo) SetExChangeInfo() (string, string, error) {
+func (ty *BasicInfo) SetExChangeInfo() error {
+
+	if len(ty.mbacc.ExchangeInfo) == 0 {
+		// 없으면 가져오세요 ~
+		ty.mbacc.GetExchangeInfo()
+	}
+
 	for _, v := range ty.mbacc.ExchangeInfo {
 		if v.Symbol == ty.symbol {
-			minnotmal := v.MinNotionalFilter()
-			lotsize := v.LotSizeFilter()
-			return minnotmal.Notional, lotsize.MinQuantity, nil
+			// ty.NotionalPrice = v.MinNotionalFilter().Notional // 최소 거래금액
+			NotionalPrice, err := utils.Float64(v.MinNotionalFilter().Notional) // 최소 거래금액
+			if err != nil {
+				return err
+			}
+
+			FMaxPrice, err := utils.Float64(v.PriceFilter().MaxPrice)
+			if err != nil {
+				return err
+			}
+			FMinPrice, err := utils.Float64(v.PriceFilter().MinPrice)
+			if err != nil {
+				return err
+			}
+			FTickSizePrice, err := utils.Float64(v.PriceFilter().TickSize)
+			if err != nil {
+				return err
+			}
+			FMaxQuantity, err := utils.Float64(v.LotSizeFilter().MaxQuantity)
+			if err != nil {
+				return err
+			}
+			FMinQuantity, err := utils.Float64(v.LotSizeFilter().MinQuantity)
+			if err != nil {
+				return err
+			}
+			FStepSize, err := utils.Float64(v.LotSizeFilter().StepSize)
+			if err != nil {
+				return err
+			}
+
+			ty.fNotionalPrice = NotionalPrice  // 최소 거래금액
+			ty.fMaxPrice = FMaxPrice           // 최대 가격
+			ty.fMinPrice = FMinPrice           // 최소 가격
+			ty.fTickSizePrice = FTickSizePrice // 가격 tickSize
+			ty.fMaxQuantity = FMaxQuantity     // 최대 코인 수량
+			ty.fMinQuantity = FMinQuantity     // 최소 코인 수량
+			ty.fStepSize = FStepSize           // 코인 tickSize
+
+			return nil
 		}
 	}
-	return "", "", fmt.Errorf("Error:BasicInfo.SetExchangeInfo() msg:not found symbol ")
+	return fmt.Errorf("Error:BasicInfo.SetExchangeInfo() msg:not found symbol ")
 }
 
 // 미체결 리스트 리턴 - 걸려있는 것들만.
@@ -187,20 +253,171 @@ func (ty *BasicInfo) GetCoinQtyForPrice(price, uset string) (string, error) {
 	return send, nil
 }
 
-// 가격으로 익절가격 가져오기
-func (ty *BasicInfo) GetTPPrice(price, takePersent string) (string, error) {
+// 가격으로 익절가격 가져오기 - 20%, 30%, ...
+func (ty *BasicInfo) GetTPPrice(price, positionSide, takePersent string) (string, error) {
 	// 가격, 익절가격
+	// 20% , 30% 라고 했을때...
+	fpri, err := utils.Float64(price)
+	if err != nil {
+		return "", err
+	}
 
-	return "", nil
+	tp, err := utils.Float64(takePersent)
+	if err != nil {
+		return "", err
+	}
+
+	var tmp float64
+	if tp > 1 {
+		if positionSide == "LONG" {
+			tmp = fpri * (1 + tp/100/ty.fleverage)
+		} else if positionSide == "SHORT" {
+			tmp = fpri * (1 - tp/100/ty.fleverage)
+		}
+	} else {
+		if positionSide == "LONG" {
+			tmp = fpri * (1 + tp/ty.fleverage)
+		} else if positionSide == "SHORT" {
+			tmp = fpri * (1 - tp/ty.fleverage)
+		}
+	}
+
+	send := utils.String(tmp)
+	return send, nil
 }
 
 // 가격으로 손절가격 가져오기
-func (ty *BasicInfo) GetSLPrice(price, takePersent string) (string, error) {
+func (ty *BasicInfo) GetSLPrice(price, positionSide, takePersent string) (string, error) {
+	fpri, err := utils.Float64(price)
+	if err != nil {
+		return "", err
+	}
 
-	return "", nil
+	tp, err := utils.Float64(takePersent)
+	if err != nil {
+		return "", err
+	}
+
+	var tmp float64
+	if tp > 1 {
+		if positionSide == "LONG" {
+			tmp = fpri * (1 - tp/100/ty.fleverage)
+		} else if positionSide == "SHORT" {
+			tmp = fpri * (1 + tp/100/ty.fleverage)
+		}
+	} else {
+		if positionSide == "LONG" {
+			tmp = fpri * (1 - tp/ty.fleverage)
+		} else if positionSide == "SHORT" {
+			tmp = fpri * (1 + tp/ty.fleverage)
+		}
+	}
+
+	send := utils.String(tmp)
+	return send, nil
 }
 
 //////// 이벤트 영역 //////////
+
+// 가격 금액 체크
+func (ty *BasicInfo) CheckMinTraderPirce(price string, Amount string) (bool, error) {
+	// price, Amount
+	fprice, err := utils.Float64(price)
+	if err != nil {
+		return false, err
+	}
+
+	famount, err := utils.Float64(Amount)
+	if err != nil {
+		return false, err
+	}
+
+	tmp := fprice * famount * ty.fleverage
+	if tmp < ty.fNotionalPrice {
+		return false, fmt.Errorf("low Price ")
+	}
+
+	return true, nil
+}
+
+// 가격 최소 최대
+func (ty *BasicInfo) CheckPriceMinMax(price string) (bool, error) {
+	fprice, err := utils.Float64(price)
+	if err != nil {
+		return false, err
+	}
+
+	if ty.fMaxPrice < fprice {
+		return false, fmt.Errorf("it is Over Price")
+	}
+
+	if ty.fMinPrice > fprice {
+		return false, fmt.Errorf("it is Low Price")
+	}
+
+	return true, nil
+}
+
+// 가격을 넣으면 step 가격 틱사이즈로 자르기 - 가격으로 할때 소수점을 자르는 작업
+func (ty *BasicInfo) ReturnPriceForSize(price string) (string, error) {
+
+	decimalStr := utils.String(ty.fTickSizePrice)     //
+	price, err := util.FormatPrice(price, decimalStr) // 소수점 처리 작업
+	if err != nil {
+		return "", err
+	}
+
+	return price, nil
+}
+
+// 최소 코인 수량
+func (ty *BasicInfo) CheckMinAmount(Amount string) (bool, error) {
+	famount, err := utils.Float64(Amount)
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	// 최소 수량
+	if ty.fMinQuantity > famount {
+		return false, fmt.Errorf("it is Low Amount")
+	}
+
+	return true, nil
+}
+
+// 최대 코인 수량
+func (ty *BasicInfo) CheckMaxAmount(Amount string) (bool, error) {
+
+	famount, err := utils.Float64(Amount)
+	if err != nil {
+		fmt.Println(err)
+		return false, err
+	}
+
+	// 최소 수량
+	if ty.fMaxQuantity < famount {
+		return false, fmt.Errorf("it is Over Amount")
+	}
+
+	return true, nil
+}
+
+// 주문 전 체크
+func (ty *BasicInfo) BeforeOrder(currentPrice, amout string) (bool, error) {
+	// currentPrice, Amount
+	if currentPrice == "" {
+		// 현재가를 기준으로 한다.
+
+	}
+
+	if amout == "" {
+		// amount 제거
+	}
+
+	return true, nil
+
+}
 
 // 미체결 주문하기
 // 심볼, 포지션, side, price, amount
@@ -299,10 +516,6 @@ func (ty *BasicInfo) SendClosePosition(position string) error {
 	}
 
 	for _, v := range res {
-		// tmp := new(UserPositionInfo)
-		// key, posinfo := tmp.SetPosition(v)
-		// symbol + "_" + posside  ex) NOTUSDT_SHORT
-		// ty.mUserPositions[key] = posinfo
 		if v.Symbol == ty.symbol && v.PositionSide == position {
 			// res, err := SendOrderMarket(symbol, position, openclose, amount)
 			res, err := ty.mbacc.GetBinanceUser().SendOrderMarket(ty.symbol, position, "CLOSE", v.PositionAmt)
@@ -313,8 +526,6 @@ func (ty *BasicInfo) SendClosePosition(position string) error {
 			if res != nil {
 				return fmt.Errorf("SendClosePosition response error")
 			}
-
-			// 뭔가 response 에서 에러를 줄 것 같은 느낌인데...
 		}
 	}
 	return nil

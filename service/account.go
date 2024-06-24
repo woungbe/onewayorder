@@ -5,7 +5,7 @@ import (
 	"math/rand"
 	"onewayorder/binance"
 	"onewayorder/errors"
-	"onewayorder/utils"
+	"onewayorder/util"
 	"time"
 
 	"github.com/adshao/go-binance/v2/futures"
@@ -233,7 +233,7 @@ func (ty *BinanceAccount) checkListenkey() {
 	}()
 
 	var chktime int64
-	rnd := rand.New(utils.GetRandSeed())
+	rnd := rand.New(util.GetRandSeed())
 	rndnum := int64(rnd.Intn(600) + 600)
 
 	chktime = rndnum
@@ -243,10 +243,10 @@ func (ty *BinanceAccount) checkListenkey() {
 		}
 
 		if ty.mBinanceUserWS != nil && ty.mBinanceUserWS.IsConnect() {
-			curTime := utils.GetCurrentTimestamp()
+			curTime := util.GetCurrentTimestamp()
 			if curTime > chktime+ty.mLastLintenKeyTime {
 
-				rnd := rand.New(utils.GetRandSeed())
+				rnd := rand.New(util.GetRandSeed())
 				rndnum := int64(rnd.Intn(600) + 600)
 				chktime = rndnum
 				ty.procListenKey()
@@ -275,7 +275,7 @@ func (ty *BinanceAccount) procListenKey() {
 		return
 	}
 
-	ty.mLastLintenKeyTime = utils.GetCurrentTimestamp()
+	ty.mLastLintenKeyTime = util.GetCurrentTimestamp()
 	ty.mListenkey = listenKey
 
 	if ty.mListenkey != listenKey {
@@ -287,7 +287,7 @@ func (ty *BinanceAccount) procListenKey() {
 		}
 		ty.mBinanceUserWS = nil
 
-		ty.mWSReConnectTime = utils.MakeTimestamp()
+		ty.mWSReConnectTime = util.MakeTimestamp()
 		ty.mWSReConnectTime = ty.mWSReConnectTime - 10000
 
 		ty.reconnectingUserWS()
@@ -320,7 +320,7 @@ func (ty *BinanceAccount) reconnectingUserWS() {
 		}
 
 		if ty.mBinanceUserWS.ClientConnect() {
-			curTime := utils.MakeTimestamp()
+			curTime := util.MakeTimestamp()
 			if ty.mWSReConnectTime == 0 || (curTime-ty.mWSReConnectTime) >= 3000 {
 				bAcc := ty.getAccountInfo()
 				if !bAcc {

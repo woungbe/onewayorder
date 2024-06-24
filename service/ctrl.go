@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"onewayorder/errors"
 	"sync"
 )
@@ -47,24 +48,47 @@ func (ty *Controller) GetUserMap(userid string) *UserInfo {
 }
 
 // 유저저장하기 - 키는 등록해 놓는것
-func (ty *Controller) SetUserMap(useridx, acckey, seckey string) error {
+func (ty *Controller) SetUserMap(userid, acckey, seckey string) error {
 	muserinfo := new(UserInfo)
 	muserinfo.Init(acckey, seckey)
-	if val, ok := ty.mUserMap[useridx]; ok {
-		return errors.ReturnError("이미 유저가 있습니다. ", useridx, val.AccessKey)
+	if val, ok := ty.mUserMap[userid]; ok {
+		return errors.ReturnError("이미 유저가 있습니다. ", userid, val.AccessKey)
 	}
-	ty.mUserMap[useridx] = muserinfo
+	ty.mUserMap[userid] = muserinfo
 	return nil
 }
 
+// 시작하기 위한 봇 설정 정보
+type BotConfigStruct struct {
+	userID    string
+	BotName   string
+	BotConfig interface{}
+}
+
 // 유저 봇 시작 - 봇을 시작하기 위해서 어떤 값들이 필요할까 .
-func (ty *Controller) StartBot(aa interface{}) error {
+func (ty *Controller) StartBot(args BotConfigStruct) error {
 	// 인터페이스
 	// ty.mUserMap[]
+	/*
+		if v, ok := ty.mUserMap[args.userID]; ok {
+			if args.BotName == "UpDown" {
+				v.BotObject = args.BotConfig.(BotConfigData)
+			}
+
+		}
+	*/
+
 	return nil
 }
 
 // 유저 봇 정지 - 봇을 정지하기 위해서 어떤 값들이 필요할까?
-func (ty *Controller) StopBot(useridx int64, aa interface{}) error {
+func (ty *Controller) StopBot(userid string, aa interface{}) error {
+
+	bot := ty.mUserMap[userid]
+
+	for k, v := range bot.BotObject {
+		fmt.Println(k, v)
+	}
+
 	return nil
 }
