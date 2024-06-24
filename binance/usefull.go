@@ -1,11 +1,29 @@
 package binance
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/adshao/go-binance/v2/futures"
 	"github.com/woungbe/utils"
 )
+
+// 미체결 주문 하기
+func (ty *BinanceUser) SendOpenOrder(symbol, position, openclose, price, amount string) (*futures.CreateOrderResponse, error) {
+	var order OrderType
+	order.Symbol = symbol
+	order.PositionSide = PositionSide(position)         // PositionSideTypeLong PositionSideTypeShort
+	order.Side = SideType(GetSide(position, openclose)) // SideTypeBuy SideTypeSell
+	order.OrderType = futures.OrderTypeMarket           // OrderTypeLimit OrderTypeMarket
+	order.Price = price
+	order.Quantity = amount
+	order.TimeInForce = futures.TimeInForceTypeGTC
+	res, err := ty.CreateOrderService(order)
+	if err != nil {
+		return nil, err
+	}
+	return res, err
+}
 
 // 마켓 주문
 func (ty *BinanceUser) SendOrderMarket(symbol, position, openclose, amount string) (*futures.CreateOrderResponse, error) {
@@ -103,12 +121,43 @@ func (ty *BinanceUser) SendOrderTrailingStop(symbol, position, openclose, price,
 	return res, err
 }
 
+// 해당 심볼의 미체결을 모두 취소하기
+func (ty *BinanceUser) SendRemoveOpenOrderForSymbol(symbol string) []string {
+	// ([]*futures.Order, error)
+	res, err := ty.GetListOpenOrdersService(symbol)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	var orderID []int64
+	for _, v := range res {
+		val := utils.String(v.ClientOrderID)
+		oriClientID, err := utils.Int64(val)
+		if err != nil {
+			fmt.Println("utils.Int64 : ", err)
+		}
+		orderID = append(orderID, oriClientID)
+	}
+
+	msg := ty.SendRemoveOpenOrder(symbol, orderID)
+	if len(msg) != 0 {
+		return msg
+	}
+	var send []string
+	return send
+}
+
 // 해당 미체결 모두 정리
-func (ty *BinanceUser) SendRemoveOpenOrder(symbol string, orderID []int64) {
+func (ty *BinanceUser) SendRemoveOpenOrder(symbol string, orderID []int64) []string {
+	var send []string
 	for _, v := range orderID {
 		val := utils.String(v)
-		ty.CancelOrder(symbol, val)
+		_, err := ty.CancelOrder(symbol, val)
+		if err != nil {
+			send = append(send, fmt.Sprintf("%s %s", val, err))
+		}
 	}
+	return send
 }
 
 func SideType(sidetype string) futures.SideType {
