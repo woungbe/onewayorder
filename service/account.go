@@ -94,6 +94,10 @@ func (ty *BinanceAccount) Init(ApiKey, ApiSeceryKey string) {
 	}
 }
 
+func (ty *BinanceAccount) GetBinanceUser() *binance.BinanceUser {
+	return ty.mBinanceAPI
+}
+
 // 벨런스 가져오기
 func (ty *BinanceAccount) GetUserBalance() string {
 	return ty.mUserBalance

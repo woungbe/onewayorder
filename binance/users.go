@@ -261,7 +261,7 @@ func (ty *BinanceUser) CreateMuiOrder(orders []*futures.CreateOrderService) (*fu
 
 // 미체결 주문 삭제
 func (ty *BinanceUser) CancelOrder(symbol, orgiclientOrderID string) (*futures.CancelOrderResponse, error) {
-	bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
-	res, err := bin.NewCancelOrderService().Symbol(symbol).OrigClientOrderID(orgiclientOrderID).Do(context.Background())
+	// bin := futures.NewClient(ty.AccessKey, ty.SecritKey)
+	res, err := ty.Client.NewCancelOrderService().Symbol(symbol).OrigClientOrderID(orgiclientOrderID).Do(context.Background())
 	return res, err
 }
