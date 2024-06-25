@@ -9,16 +9,24 @@ import (
 )
 
 // 미체결 주문 하기
-func (ty *BinanceUser) SendOpenOrder(symbol, position, openclose, price, amount string) (*futures.CreateOrderResponse, error) {
-	var order OrderType
+func (ty *BinanceUser) SendOpenOrder(symbol, position, openclose, price, amount string) (*futures.CreateBatchOrdersResponse, error) {
+	var send []*futures.CreateOrderService
+	var order OpenOrder
 	order.Symbol = symbol
 	order.PositionSide = PositionSide(position)         // PositionSideTypeLong PositionSideTypeShort
 	order.Side = SideType(GetSide(position, openclose)) // SideTypeBuy SideTypeSell
-	order.OrderType = futures.OrderTypeMarket           // OrderTypeLimit OrderTypeMarket
+	order.Type = futures.OrderTypeLimit                 // OrderTypeLimit OrderTypeMarket
 	order.Price = price
 	order.Quantity = amount
 	order.TimeInForce = futures.TimeInForceTypeGTC
-	res, err := ty.CreateOrderService(order)
+	createOrderService := ty.CreateOrderLimitMarket(order)
+	send = append(send, createOrderService)
+	res, err := ty.CreateMuiOrder(send)
+	if err != nil {
+		fmt.Println(err)
+	}
+	fmt.Println(res)
+
 	if err != nil {
 		return nil, err
 	}

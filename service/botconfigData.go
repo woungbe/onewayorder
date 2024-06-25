@@ -119,6 +119,11 @@ func (ty *BasicInfo) GetStepSize() string {
 	return ty.fStepSize
 }
 
+// new 데이터
+func (ty *BasicInfo) NewClient() error {
+	return nil
+}
+
 // 최소단위, 코인 소수점 가져오기
 func (ty *BasicInfo) SetExChangeInfo() error {
 
@@ -170,9 +175,9 @@ func (ty *BasicInfo) SetExChangeInfo() error {
 }
 
 // 미체결 리스트 리턴 - 걸려있는 것들만.
-func (ty *BasicInfo) GetOpenOrder() map[int64]UserOpenOrder {
+func (ty *BasicInfo) GetOpenOrder(symbol string) map[int64]UserOpenOrder {
 	// 요청하고,
-	b := ty.mbacc.GetOpenOrderList()
+	b := ty.mbacc.GetOpenOrderList(symbol)
 	if b {
 		errors.Error("have a openorder")
 		return nil
@@ -202,7 +207,11 @@ func (ty *BasicInfo) GetPositionList() (map[string]UserPositionInfo, error) {
 	send := make(map[string]UserPositionInfo)
 	res := ty.mbacc.GetUserPositions()
 	for k, v := range res {
-		if v.Symbol == ty.symbol {
+		entry, err := utils.Float64(v.EntryPrice)
+		if err != nil {
+			return nil, err
+		}
+		if v.Symbol == ty.symbol && entry != 0 {
 			send[k] = v
 		}
 	}
@@ -267,6 +276,8 @@ func (ty *BasicInfo) GetCoinQtyForPrice(price, uset string) (string, error) {
 	// 증거금*레버리지 = 가격 * 수량
 	amount := fUsdt * ty.fleverage / fPrice
 	send = utils.String(amount)
+
+	// 코인 수량 소수점 제거
 	return send, nil
 }
 
@@ -299,7 +310,14 @@ func (ty *BasicInfo) GetTPPrice(price, positionSide, takePersent string) (string
 		}
 	}
 
-	send := utils.String(tmp)
+	fprice := utils.String(tmp)
+	// 가격 소수점 제거
+	send, err := ty.ReturnPriceForSize(fprice)
+	if err != nil {
+		fmt.Println(err)
+		return "", err
+	}
+
 	return send, nil
 }
 
@@ -330,7 +348,12 @@ func (ty *BasicInfo) GetSLPrice(price, positionSide, takePersent string) (string
 		}
 	}
 
-	send := utils.String(tmp)
+	fprice := utils.String(tmp)
+	send, err := ty.ReturnPriceForSize(fprice)
+	if err != nil {
+		return "", err
+	}
+
 	return send, nil
 }
 
@@ -385,6 +408,19 @@ func (ty *BasicInfo) ReturnPriceForSize(price string) (string, error) {
 	}
 
 	return price, nil
+}
+
+// 코인수량을 넣으면 소수점 잘라주는 기능
+func (ty *BasicInfo) ReturnCoinForSize(amount string) (string, error) {
+
+	decimalStr := utils.String(ty.fMinQuantity)        //
+	price, err := util.FormatPrice(amount, decimalStr) // 소수점 처리 작업
+	if err != nil {
+		return "", err
+	}
+
+	return price, nil
+
 }
 
 // 최소 코인 수량
@@ -445,14 +481,11 @@ func (ty *BasicInfo) BeforeOrder(currentPrice, amout string) (bool, error) {
 	price -
 	amount -
 */
-func (ty *BasicInfo) SendOpenOrder(position, side, price, amount string) (*futures.CreateOrderResponse, error) {
-	// 사용하지는 않는데 만들어는 놓치뭐
+func (ty *BasicInfo) SendOpenOrder(position, side, price, amount string) (*futures.CreateBatchOrdersResponse, error) {
 	res, err := ty.mbacc.GetBinanceUser().SendOpenOrder(ty.symbol, position, side, price, amount)
 	if err != nil {
 		return nil, err
 	}
-	// 필요하다면 response 를 가공해도 됨 !!
-	// (*futures.CreateOrderResponse, error)
 	return res, nil
 }
 

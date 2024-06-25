@@ -28,8 +28,8 @@ type callBackFunc_onExpiredOrder func(Symbol string, PositionSide string, Side s
 type callBackFunc_onTradeOrder func(ClientOrderID string, Symbol string, PositionSide string, Side string, MarginType bool, Leverage int, TradeType string, closeOrder bool, AvgPrice string, EntryPrice string, tradeQty string, Commission string, RealizedPnL string, TradeTime int64) //체결 이벤트
 
 type BinanceAccount struct {
-	mApikey      string // 유저 API 키
-	mApiSeckey   string // 유저 시크릿키
+	// mApikey      string // 유저 API 키
+	// mApiSeckey   string // 유저 시크릿키
 	mListenkey   string // 웹소켓 리슨키
 	ExchangeInfo []futures.Symbol
 
@@ -67,8 +67,8 @@ type BinanceAccount struct {
 }
 
 func (ty *BinanceAccount) Init(ApiKey, ApiSeceryKey string) {
-	ty.mApikey = ApiKey
-	ty.mApiSeckey = ApiSeceryKey
+	// ty.mApikey = ApiKey
+	// ty.mApiSeckey = ApiSeceryKey
 	ty.mListenkey = ""
 
 	ty.mUserOpenOrders = make(map[int64]UserOpenOrder)
@@ -82,6 +82,8 @@ func (ty *BinanceAccount) Init(ApiKey, ApiSeceryKey string) {
 
 	// 일단 신청해서 mBinanceAPI 하자 !!
 	ty.mBinanceAPI = new(binance.BinanceUser)
+	ty.mBinanceAPI.Init(ApiKey, ApiSeceryKey)
+
 	ty.mBinanceUserWS = new(BinanceUserWSObject)
 
 	// 여기서 해야되는 것들 정리
@@ -330,14 +332,14 @@ func (ty *BinanceAccount) reconnectingUserWS() {
 					ty.setStatus(-2)
 					return
 				}
-				bOp := ty.GetOpenOrderList()
-				if !bOp {
-					if ty.mCB_AccountErrorClose != nil {
-						ty.mCB_AccountErrorClose("미체결정보 로드 오류")
-					}
-					ty.setStatus(-2)
-					return
-				}
+				// bOp := ty.GetOpenOrderList()
+				// if !bOp {
+				// 	if ty.mCB_AccountErrorClose != nil {
+				// 		ty.mCB_AccountErrorClose("미체결정보 로드 오류")
+				// 	}
+				// 	ty.setStatus(-2)
+				// 	return
+				// }
 			}
 			ty.setStatus(1)
 			return
@@ -365,7 +367,7 @@ func (ty *BinanceAccount) LoadAccountInfo() bool {
 		ty.setStatus(-1)
 		return false
 	}
-	bOp := ty.GetOpenOrderList()
+	bOp := ty.GetOpenOrderList("")
 	if !bOp {
 		ty.setStatus(-1)
 		return false
@@ -393,7 +395,7 @@ func (ty *BinanceAccount) getAccountInfo() bool {
 }
 
 // 오픈 리스트 가져오기
-func (ty *BinanceAccount) GetOpenOrderList() bool {
+func (ty *BinanceAccount) GetOpenOrderList(symbol string) bool {
 	defer func() {
 		if err := recover(); err != nil {
 			errors.Error("Crit Panic", "getOpenOrderList  ", err)
@@ -401,7 +403,7 @@ func (ty *BinanceAccount) GetOpenOrderList() bool {
 	}()
 
 	// 오픈오더 가져오기
-	res, err := ty.mBinanceAPI.GetListOpenOrdersService("") // 전체 가져오기
+	res, err := ty.mBinanceAPI.GetListOpenOrdersService(symbol) // 전체 가져오기
 	if err != nil {
 		errors.Error("Crit Panic", "BinanceAccount.getOpenOrderList  ", err)
 		return false

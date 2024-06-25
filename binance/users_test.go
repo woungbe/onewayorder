@@ -97,14 +97,14 @@ func TestCreateMuiOrder(t *testing.T) {
 	var send []*futures.CreateOrderService
 	var order OpenOrder
 	order.Symbol = "BIGTIMEUSDT"
-	order.Side = futures.SideTypeBuy                   // SideTypeBuy SideTypeSell
-	order.PositionSide = futures.PositionSideTypeShort // PositionSideTypeLong PositionSideTypeShort
-	order.Type = futures.OrderTypeLimit                // OrderTypeLimit OrderTypeMarket
-	order.Quantity = "500"
-	order.Price = "0.2100"
+	order.Side = futures.SideTypeBuy                  // SideTypeBuy SideTypeSell
+	order.PositionSide = futures.PositionSideTypeLong // PositionSideTypeLong PositionSideTypeShort
+	order.Type = futures.OrderTypeLimit               // OrderTypeLimit OrderTypeMarket
+	order.Quantity = "50"
+	order.Price = "0.1000"
 	order.TimeInForce = futures.TimeInForceTypeGTC
 
-	createOrderService := CreateOrderLimitMarket(order)
+	createOrderService := GetUsrs().CreateOrderLimitMarket(order)
 	send = append(send, createOrderService)
 	res, err := GetUsrs().CreateMuiOrder(send)
 	if err != nil {
@@ -124,7 +124,7 @@ func TestCreateMuiOrderMarket(t *testing.T) {
 	// order.Price = "0.2177"
 	// order.TimeInForce = futures.TimeInForceTypeGTC
 
-	createOrderService := CreateOrderLimitMarket(order)
+	createOrderService := GetUsrs().CreateOrderLimitMarket(order)
 	send = append(send, createOrderService)
 	res, err := GetUsrs().CreateMuiOrder(send)
 	if err != nil {
@@ -143,7 +143,7 @@ func TestCreateClosePosition(t *testing.T) {
 	order.Type = futures.OrderTypeMarket               // OrderTypeLimit OrderTypeMarket
 	order.Quantity = "500"
 
-	createOrderService := CreateOrderLimitMarket(order)
+	createOrderService := GetUsrs().CreateOrderLimitMarket(order)
 	send = append(send, createOrderService)
 	res, err := GetUsrs().CreateMuiOrder(send)
 	if err != nil {

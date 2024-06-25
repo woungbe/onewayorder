@@ -96,7 +96,7 @@ func (ty *BinanceUser) GetPositionRiskService(symbol string) ([]*futures.Positio
 // Pair(pair string)
 func (ty *BinanceUser) GetListOpenOrdersService(symbol string) ([]*futures.Order, error) {
 	service := ty.Client.NewListOpenOrdersService()
-	if symbol == "" {
+	if symbol != "" {
 		service = service.Symbol(symbol)
 	}
 	res, err := service.Do(context.Background())
@@ -159,7 +159,7 @@ type OpenOrder struct {
 	ClosePosition string
 }
 
-func CreateOrderLimitMarket(args OpenOrder) *futures.CreateOrderService {
+func (ty *BinanceUser) CreateOrderLimitMarket(args OpenOrder) *futures.CreateOrderService {
 	order := new(futures.CreateOrderService)
 	// 주문 목록 업데이트 좀 해야지 ?!!
 	if args.Symbol != "" {

@@ -33,11 +33,20 @@ func FormatPrice(priceStr string, decimalStr string) (string, error) {
 		return "", fmt.Errorf("invalid price: %v", err)
 	}
 
-	decimalPlaces, err := strconv.Atoi(decimalStr)
+	// Convert decimal string to float64
+	decimal, err := strconv.ParseFloat(decimalStr, 64)
 	if err != nil {
 		return "", fmt.Errorf("invalid decimal places: %v", err)
 	}
 
+	// Calculate the number of decimal places
+	decimalPlaces := 0
+	for decimal < 1 {
+		decimal *= 10
+		decimalPlaces++
+	}
+
+	// Format price with specified decimal places
 	format := fmt.Sprintf("%%.%df", decimalPlaces)
 	formattedPrice := fmt.Sprintf(format, price)
 

@@ -12,7 +12,6 @@ import (
 func GetBasicInit() *BasicInfo {
 
 	errors.Path = "../logs/error_log"
-
 	client := new(BasicInfo)
 	bacc := new(BinanceAccount)
 
@@ -41,14 +40,14 @@ func TestGetExchangeInfo(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	// fmt.Sprintf("%+v", basic)
+	// fmt.Sprintf("%+v", basic)		  // DOGE 일때
 	fmt.Println(basic.GetNotionalPrice()) // 5
 	fmt.Println(basic.GetMaxPrice())      // 30
 	fmt.Println(basic.GetMinPrice())      // 0.00244
 	fmt.Println(basic.GetTickSizePrice()) // 0.000010
-	fmt.Println(basic.GetMaxQuantity())   //
-	fmt.Println(basic.GetMinQuantity())
-	fmt.Println(basic.GetStepSize())
+	fmt.Println(basic.GetMaxQuantity())   // 5e+07
+	fmt.Println(basic.GetMinQuantity())   // 1
+	fmt.Println(basic.GetStepSize())      // 1
 }
 
 // 미체결 리스트 리턴
@@ -58,7 +57,7 @@ func TestGetOpenOrder(t *testing.T) {
 	basic.SetSymbol("DOGEUSDT")
 	basic.SetLeverage("20")
 
-	res := basic.GetOpenOrder()
+	res := basic.GetOpenOrder("")
 	if len(res) == 0 {
 		fmt.Println(" 없음 ")
 		return
@@ -67,11 +66,9 @@ func TestGetOpenOrder(t *testing.T) {
 	for _, v := range res {
 		fmt.Println(v)
 	}
-
 }
 
 func TestGetPositionList(t *testing.T) {
-	//	func (ty *BasicInfo) GetPositionList() (map[string]UserPositionInfo, error) {
 	basic := GetBasicInit()
 	res, err := basic.GetPositionList()
 	if err != nil {
@@ -79,9 +76,8 @@ func TestGetPositionList(t *testing.T) {
 	}
 
 	for _, v := range res {
-		fmt.Sprintf("%+v\n", v)
+		fmt.Printf("%+v\n", v)
 	}
-
 }
 
 func TestGetCurrentPrice(t *testing.T) {
@@ -96,10 +92,9 @@ func TestGetCurrentPrice(t *testing.T) {
 
 }
 
+// Entry Price
 func TestGetEntryPrice(t *testing.T) {
-	//	func (ty *BasicInfo) GetEntryPrice(longshort string) (string, error) {
 	basic := GetBasicInit()
-
 	res, err := basic.GetEntryPrice("LONG")
 	if err != nil {
 		fmt.Println(err)
@@ -109,24 +104,36 @@ func TestGetEntryPrice(t *testing.T) {
 
 }
 
+// 가격,USDT 로 => 코인 수량 가져오기
 func TestGetCoinQtyForPrice(t *testing.T) {
-	//	func (ty *BasicInfo) GetCoinQtyForPrice(price, uset string) (string, error) {
 	basic := GetBasicInit()
-	res, err := basic.GetCoinQtyForPrice("0.0117", "200")
+	res, err := basic.GetCoinQtyForPrice("0.117", "200")
 	if err != nil {
 		fmt.Println(err)
 	}
 
 	fmt.Println("res : ", res)
 
+	amount, err := basic.ReturnCoinForSize(res)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Println("coin amount : ", amount)
 }
 
+// 가격, 포지션, 익절퍼센트 => 가격 가져오기
 func TestGetTPPrice(t *testing.T) {
 	//	func (ty *BasicInfo) GetTPPrice(price, positionSide, takePersent string) (string, error) {
 	basic := GetBasicInit()
+	err := basic.SetExChangeInfo()
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	price := "0.0117"
 	positionSide := "LONG"
-	takePersent := "0.127"
+	takePersent := "20"
 	res, err := basic.GetTPPrice(price, positionSide, takePersent)
 	if err != nil {
 		fmt.Println(err)
@@ -138,9 +145,14 @@ func TestGetTPPrice(t *testing.T) {
 func TestGetSLPrice(t *testing.T) {
 	//	func (ty *BasicInfo) GetSLPrice(price, positionSide, takePersent string) (string, error) {
 	basic := GetBasicInit()
-	price := "0.0117"
+	err := basic.SetExChangeInfo()
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	price := "0.11924"
 	positionSide := "LONG"
-	takePersent := "0.107"
+	takePersent := "25"
 	res, err := basic.GetSLPrice(price, positionSide, takePersent)
 	if err != nil {
 		fmt.Println(err)
@@ -181,9 +193,15 @@ func TestCheckPriceMinMax(t *testing.T) {
 	}
 }
 
+// 가격 잘라주기 !!
 func TestReturnPriceForSize(t *testing.T) {
 	//	func (ty *BasicInfo) ReturnPriceForSize(price string) (string, error) {
 	basic := GetBasicInit()
+	err := basic.SetExChangeInfo()
+	if err != nil {
+		fmt.Println(err)
+	}
+
 	price := "0.1170123012301230"
 	b, err := basic.ReturnPriceForSize(price)
 	if err != nil {
@@ -237,14 +255,14 @@ func TestSendOpenOrder(t *testing.T) {
 	basic := GetBasicInit()
 	position := "LONG"
 	side := "OPEN"
-	price := "0.01017"
+	price := "0.1017"
 	amount := "1000"
 	res, err := basic.SendOpenOrder(position, side, price, amount)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Sprintf("%+v\n", res)
+	fmt.Printf("%+v\n", res)
 
 }
 
