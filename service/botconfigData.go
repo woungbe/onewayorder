@@ -57,10 +57,10 @@ type BasicInfo struct {
 	fNotionalPrice float64 // 최소 거래금액
 	fMaxPrice      float64 // 최대 가격
 	fMinPrice      float64 // 최소 가격
-	fTickSizePrice float64 // 가격 tickSize
+	fTickSizePrice string  // 가격 tickSize
 	fMaxQuantity   float64 // 최대 코인 수량
 	fMinQuantity   float64 // 최소 코인 수량
-	fStepSize      float64 // 코인 tickSize
+	fStepSize      string  // 코인 tickSize
 
 }
 
@@ -97,6 +97,28 @@ func (ty *BasicInfo) SetLeverage(Leverage string) {
 	ty.fleverage = fleverage
 }
 
+func (ty *BasicInfo) GetNotionalPrice() float64 {
+	return ty.fNotionalPrice
+}
+func (ty *BasicInfo) GetMaxPrice() float64 {
+	return ty.fMaxPrice
+}
+func (ty *BasicInfo) GetMinPrice() float64 {
+	return ty.fMinPrice
+}
+func (ty *BasicInfo) GetTickSizePrice() string {
+	return ty.fTickSizePrice
+}
+func (ty *BasicInfo) GetMaxQuantity() float64 {
+	return ty.fMaxQuantity
+}
+func (ty *BasicInfo) GetMinQuantity() float64 {
+	return ty.fMinQuantity
+}
+func (ty *BasicInfo) GetStepSize() string {
+	return ty.fStepSize
+}
+
 // 최소단위, 코인 소수점 가져오기
 func (ty *BasicInfo) SetExChangeInfo() error {
 
@@ -121,10 +143,8 @@ func (ty *BasicInfo) SetExChangeInfo() error {
 			if err != nil {
 				return err
 			}
-			FTickSizePrice, err := utils.Float64(v.PriceFilter().TickSize)
-			if err != nil {
-				return err
-			}
+			FTickSizePrice := v.PriceFilter().TickSize
+
 			FMaxQuantity, err := utils.Float64(v.LotSizeFilter().MaxQuantity)
 			if err != nil {
 				return err
@@ -133,10 +153,7 @@ func (ty *BasicInfo) SetExChangeInfo() error {
 			if err != nil {
 				return err
 			}
-			FStepSize, err := utils.Float64(v.LotSizeFilter().StepSize)
-			if err != nil {
-				return err
-			}
+			FStepSize := v.LotSizeFilter().StepSize
 
 			ty.fNotionalPrice = NotionalPrice  // 최소 거래금액
 			ty.fMaxPrice = FMaxPrice           // 최대 가격
@@ -440,8 +457,8 @@ func (ty *BasicInfo) SendOpenOrder(position, side, price, amount string) (*futur
 }
 
 // 마켓주문
-func (ty *BasicInfo) SendMarketOrder(symbol, position, openclose, price string) (*futures.CreateOrderResponse, error) {
-	res, err := ty.mbacc.GetBinanceUser().SendOrderMarket(symbol, position, openclose, price)
+func (ty *BasicInfo) SendMarketOrder(symbol, position, openclose, amount string) (*futures.CreateOrderResponse, error) {
+	res, err := ty.mbacc.GetBinanceUser().SendOrderMarket(symbol, position, openclose, amount)
 	if err != nil {
 		errors.Error("OnewayBot : SendOrderMarket", err)
 		return nil, err
@@ -465,24 +482,27 @@ func (ty *BasicInfo) SendTakeProfit(symbol, position, openclose, price string) (
 }
 
 // SL 주문
-func (ty *BasicInfo) SendStopLoss(symbol, position, openclose, price string) error {
+func (ty *BasicInfo) SendStopLoss(symbol, position, openclose, price string) (*futures.CreateOrderResponse, error) {
 	res, err := ty.mbacc.GetBinanceUser().SendOrderStopLoss(symbol, position, openclose, price)
 	if err != nil {
 		errors.Error("OnewayBot : sendStopLoss", err)
-		return err
+		return nil, err
 	}
 	log := fmt.Sprintf("%+v\n", res)
 	errors.Log("sendStopMarket ", log)
-	return nil
+	return res, nil
 }
 
 // Stop Market 주문
-func (ty *BasicInfo) SendStopMarket(symbol, positionside, openclose, price, amount string) error {
+func (ty *BasicInfo) SendStopMarket(symbol, positionside, openclose, price, amount string) (*futures.CreateOrderResponse, error) {
 	// 이렇게 돌아가는 이유는 비상시에 여기다가 로그를 남기거나 에러를 남길 수 있는 장치를 넣을 수 있음.
 	res, err := ty.mbacc.GetBinanceUser().SendOrderStopMarket(symbol, positionside, openclose, price, amount)
 	log := fmt.Sprintf("%+v\n", res)
 	errors.Log("sendStopMarket ", log)
-	return err
+	if err != nil {
+		return nil, err
+	}
+	return res, err
 }
 
 // 미체결 주문 취소
@@ -507,12 +527,12 @@ func (ty *BasicInfo) SendRemoveOpenOrder() []string {
 }
 
 // 포지션 청산 - 2개, POSITION,
-func (ty *BasicInfo) SendClosePosition(position string) error {
+func (ty *BasicInfo) SendClosePosition(position string) (*futures.CreateOrderResponse, error) {
 	// 포지션을 가져와서 !!
 	res, err := ty.mbacc.GetBinanceUser().GetPositionRiskService(ty.symbol) // 전체 가져오기
 	if err != nil {
 		errors.Error("Crit Panic", "BinanceAccount.getOpenOrderList  ", err)
-		return err
+		return nil, err
 	}
 
 	for _, v := range res {
@@ -520,13 +540,11 @@ func (ty *BasicInfo) SendClosePosition(position string) error {
 			// res, err := SendOrderMarket(symbol, position, openclose, amount)
 			res, err := ty.mbacc.GetBinanceUser().SendOrderMarket(ty.symbol, position, "CLOSE", v.PositionAmt)
 			if err != nil {
-				return err
+				return nil, err
 			}
 
-			if res != nil {
-				return fmt.Errorf("SendClosePosition response error")
-			}
+			return res, nil
 		}
 	}
-	return nil
+	return nil, fmt.Errorf("not found position")
 }
