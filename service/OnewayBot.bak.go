@@ -4,13 +4,18 @@ import (
 	"fmt"
 	"math"
 	"math/rand"
-	"onewayorder/binance"
 	"onewayorder/errors"
 	"strings"
 	"time"
 
 	"github.com/woungbe/utils"
 )
+
+/*
+ 	설정 데이터 정보
+	// ws callback - func
+	// 일단 중복 제거 하기
+*/
 
 // 설정 정보 데이터
 type BotConfigData struct {
@@ -121,42 +126,6 @@ func (ty *OnewayBot) Run() bool {
 	return true
 }
 
-// 포지션이 있는지 체크
-func (ty *OnewayBot) CheckPosition() bool {
-	// 포지션 요청
-	b := ty.mbinanceAccount.GetPositionList()
-	if b {
-		errors.Error("CheckPosition :  GetPositionList")
-		return false
-	}
-	// 포지션 데이터 가져와서 확인
-	res := ty.mbinanceAccount.GetUserPositions()
-	for _, v := range res {
-		if v.Symbol == ty.mConfigData.Symbol {
-			return true
-		}
-	}
-	return false
-}
-
-// 체결이 되고 나서 평단가 구하는 구하기
-func (ty *OnewayBot) GetEntryPrice(longshort string) string {
-	b := ty.mbinanceAccount.GetPositionList()
-	if b {
-		msg := fmt.Sprintf("GetEntryPrice : GetPositionList")
-		errors.Error(msg)
-		return ""
-	}
-
-	res := ty.mbinanceAccount.GetUserPositions()
-	for _, v := range res {
-		if v.PositionSide == longshort && v.Symbol == ty.mConfigData.Symbol {
-			return v.EntryPrice
-		}
-	}
-	return ""
-}
-
 // 최소 금액 계산
 func (ty *OnewayBot) CheckMinPrice() int64 {
 	var send int64
@@ -169,216 +138,113 @@ func (ty *OnewayBot) CheckMinPrice() int64 {
 	return send
 }
 
-// 주문하기
-func (ty *OnewayBot) SendFirstOrder() error {
+// // 주문하기
+// func (ty *OnewayBot) SendFirstOrder() error {
 
-	ty.mActFlg = true
-	ty.mRound = 1
+// 	ty.mActFlg = true
+// 	ty.mRound = 1
 
-	// ticker 로 현재가를 가져온다.
+// 	// ticker 로 현재가를 가져온다.
 
-	symbol := ty.mConfigData.Symbol
-	positionside := ty.GetPositionSide(true)
-	side := ty.GetSide(positionside, "OPEN")
-	currentprice := ty.GetCurrentPrice()
-	amount := ty.GetAmount(currentprice)
+// 	symbol := ty.mConfigData.Symbol
+// 	positionside := ty.GetPositionSide(true)
+// 	side := ty.GetSide(positionside, "OPEN")
+// 	currentprice := ty.GetCurrentPrice()
+// 	amount := ty.GetAmount(currentprice)
 
-	// 시장가 주문
-	err := ty.sendMarketOrder(symbol, positionside, side, amount)
-	if err != nil {
-		errors.Error("Crit ", "OnewayBot sendMarketOrder ", err)
-		return err
-	}
+// 	// 시장가 주문
+// 	err := ty.sendMarketOrder(symbol, positionside, side, amount)
+// 	if err != nil {
+// 		errors.Error("Crit ", "OnewayBot sendMarketOrder ", err)
+// 		return err
+// 	}
 
-	time.Sleep(time.Second * 2)
+// 	time.Sleep(time.Second * 2)
 
-	// 포지션을 가져옵니다. - 현재 포지션을 체크합니다.
-	entryPrice := ty.GetEntryPrice(positionside)
+// 	// 포지션을 가져옵니다. - 현재 포지션을 체크합니다.
+// 	entryPrice := ty.GetEntryPrice(positionside)
 
-	// 익절 - symbol string, position string, openclose string, price string
-	err = ty.sendTakeProfit(symbol, positionside, "CLOSE", ty.GetTakePrice(entryPrice, positionside))
-	if err != nil {
-		errors.Error("Crit ", "OnewayBot sendTakeProfit ", err)
-		return err
-	}
+// 	// 익절 - symbol string, position string, openclose string, price string
+// 	err = ty.sendTakeProfit(symbol, positionside, "CLOSE", ty.GetTakePrice(entryPrice, positionside))
+// 	if err != nil {
+// 		errors.Error("Crit ", "OnewayBot sendTakeProfit ", err)
+// 		return err
+// 	}
 
-	// 손절
-	err = ty.sendStopLoss(symbol, positionside, "CLOSE", ty.GetStopLoss(entryPrice, positionside))
-	if err != nil {
-		errors.Error("Crit ", "OnewayBot sendStopLoss ", err)
-		return err
-	}
+// 	// 손절
+// 	err = ty.sendStopLoss(symbol, positionside, "CLOSE", ty.GetStopLoss(entryPrice, positionside))
+// 	if err != nil {
+// 		errors.Error("Crit ", "OnewayBot sendStopLoss ", err)
+// 		return err
+// 	}
 
-	// 스탑 마켓 - symbol string, positionside string, openclose string, price string, amount string
-	ty.mRound++
-	err = ty.sendStopMarket(symbol, ty.GetPositionSide(false), "OPEN", ty.GetOtherPrice(entryPrice, positionside), ty.GetAmount(entryPrice))
-	if err != nil {
-		errors.Error("Crit ", "OnewayBot sendStopMarket ", err)
-		return err
-	}
-	return nil
-}
+// 	// 스탑 마켓 - symbol string, positionside string, openclose string, price string, amount string
+// 	ty.mRound++
+// 	err = ty.sendStopMarket(symbol, ty.GetPositionSide(false), "OPEN", ty.GetOtherPrice(entryPrice, positionside), ty.GetAmount(entryPrice))
+// 	if err != nil {
+// 		errors.Error("Crit ", "OnewayBot sendStopMarket ", err)
+// 		return err
+// 	}
+// 	return nil
+// }
 
-// 두번째가 체결된 이후 조건 주문 - 체결된 포지션 side
-func (ty *OnewayBot) SendSecond(position string) error {
-	// fmt.Println("두번째 체결 이후 작업 ")
+// // 두번째가 체결된 이후 조건 주문 - 체결된 포지션 side
+// func (ty *OnewayBot) SendSecond(position string) error {
+// 	// fmt.Println("두번째 체결 이후 작업 ")
 
-	// 라운드
-	// 금액설정 => 수량 변환
-	// 넣을 가격
-	ty.mRound++
-	symbol := ty.mConfigData.Symbol
+// 	// 라운드
+// 	// 금액설정 => 수량 변환
+// 	// 넣을 가격
+// 	ty.mRound++
+// 	symbol := ty.mConfigData.Symbol
 
-	// 체결된 포지션의 반대를 넣어야되는 상황일세 ?
-	// positionSide := ty.GetPositionSide(true)
-	var positionSide string
-	if position == "LONG" {
-		positionSide = "SHORT"
-	} else {
-		positionSide = "LONG"
-	}
+// 	// 체결된 포지션의 반대를 넣어야되는 상황일세 ?
+// 	// positionSide := ty.GetPositionSide(true)
+// 	var positionSide string
+// 	if position == "LONG" {
+// 		positionSide = "SHORT"
+// 	} else {
+// 		positionSide = "LONG"
+// 	}
 
-	stopPrice := ty.GetPrice(positionSide)
-	amount := ty.GetAmount(stopPrice)
+// 	stopPrice := ty.GetPrice(positionSide)
+// 	amount := ty.GetAmount(stopPrice)
 
-	// 스탑마켓 넣어야지
-	err := ty.sendStopMarket(symbol, positionSide, "OPEN", stopPrice, amount)
-	if err != nil {
-		errors.Error("Crit ", "OnewayBot sendStopMarket ", err)
-		return err
-	}
+// 	// 스탑마켓 넣어야지
+// 	err := ty.sendStopMarket(symbol, positionSide, "OPEN", stopPrice, amount)
+// 	if err != nil {
+// 		errors.Error("Crit ", "OnewayBot sendStopMarket ", err)
+// 		return err
+// 	}
 
-	/*
-		익절손절을 재설정 하는 방법도 있고
-		취소하고 다시 등록하는 방법도 있지만.
-		그냥 유지하는 방법도 있음. - 여러개 하지뭐..
+// 	/*
+// 		익절손절을 재설정 하는 방법도 있고
+// 		취소하고 다시 등록하는 방법도 있지만.
+// 		그냥 유지하는 방법도 있음. - 여러개 하지뭐..
 
-		상황에 따라서 각각 다를 수 있음.
-	*/
+// 		상황에 따라서 각각 다를 수 있음.
+// 	*/
 
-	// other side 의 익절 손절을 걸자
-	otherSide := position
-	entryPrice := ty.GetPrice(otherSide)
+// 	// other side 의 익절 손절을 걸자
+// 	otherSide := position
+// 	entryPrice := ty.GetPrice(otherSide)
 
-	// 익절 - symbol string, position string, openclose string, price string
-	err = ty.sendTakeProfit(symbol, otherSide, "CLOSE", ty.GetTakePrice(entryPrice, otherSide))
-	if err != nil {
-		errors.Error("Crit ", "OnewayBot sendTakeProfit ", err)
-		return err
-	}
+// 	// 익절 - symbol string, position string, openclose string, price string
+// 	err = ty.sendTakeProfit(symbol, otherSide, "CLOSE", ty.GetTakePrice(entryPrice, otherSide))
+// 	if err != nil {
+// 		errors.Error("Crit ", "OnewayBot sendTakeProfit ", err)
+// 		return err
+// 	}
 
-	// 손절
-	err = ty.sendStopLoss(symbol, otherSide, "CLOSE", ty.GetStopLoss(entryPrice, otherSide))
-	if err != nil {
-		errors.Error("Crit ", "OnewayBot sendStopLoss ", err)
-		return err
-	}
+// 	// 손절
+// 	err = ty.sendStopLoss(symbol, otherSide, "CLOSE", ty.GetStopLoss(entryPrice, otherSide))
+// 	if err != nil {
+// 		errors.Error("Crit ", "OnewayBot sendStopLoss ", err)
+// 		return err
+// 	}
 
-	return nil
-}
-
-// 마켓주문하기
-func (ty *OnewayBot) sendMarketOrder(symbol, position, openclose, price string) error {
-	res, err := ty.mbinanceAccount.mBinanceAPI.SendOrderMarket(symbol, position, openclose, price)
-	if err != nil {
-		errors.Error("OnewayBot : SendOrderMarket", err)
-		return err
-	}
-	log := fmt.Sprintf("%+v\n", res)
-	errors.Log("sendTakeProfit ", log)
-	return nil
-}
-
-// TP 주문
-func (ty *OnewayBot) sendTakeProfit(symbol, position, openclose, price string) error {
-	errors.Log("sendTakeProfit : ", symbol, position, openclose, price)
-	res, err := ty.mbinanceAccount.mBinanceAPI.SendOrderTakeProfit(symbol, position, openclose, price)
-	if err != nil {
-		errors.Error("OnewayBot : SendOrderTakeProfit", err)
-		return err
-	}
-	log := fmt.Sprintf("%+v\n", res)
-	errors.Log("sendTakeProfit ", log)
-	return nil
-}
-
-// SL 주문
-func (ty *OnewayBot) sendStopLoss(symbol, position, openclose, price string) error {
-	res, err := ty.mbinanceAccount.mBinanceAPI.SendOrderStopLoss(symbol, position, openclose, price)
-	if err != nil {
-		errors.Error("OnewayBot : sendStopLoss", err)
-		return err
-	}
-	log := fmt.Sprintf("%+v\n", res)
-	errors.Log("sendStopMarket ", log)
-	return nil
-}
-
-// stop market 주문 (반대쪽 매매 )
-func (ty *OnewayBot) sendStopMarket(symbol, positionside, openclose, price, amount string) error {
-	// 이렇게 돌아가는 이유는 비상시에 여기다가 로그를 남기거나 에러를 남길 수 있는 장치를 넣을 수 있음.
-	res, err := ty.mbinanceAccount.mBinanceAPI.SendOrderStopMarket(symbol, positionside, openclose, price, amount)
-	log := fmt.Sprintf("%+v\n", res)
-	errors.Log("sendStopMarket ", log)
-	return err
-}
-
-// 모든 주문 정리하기
-func (ty *OnewayBot) removeAllOpenOrder() error {
-	// 모든 openorder 정리하기
-	// ty.mbinanceAccount.mBinanceAPI.
-	// GetUserOpenOrders()
-	res := ty.mbinanceAccount.GetUserOpenOrders()
-	var orderids []int64
-	for _, v := range res {
-		orderids = append(orderids, v.OrderID)
-	}
-
-	ty.mbinanceAccount.mBinanceAPI.SendRemoveOpenOrder(ty.mConfigData.Symbol, orderids)
-	return nil
-}
-
-// side 가져오기
-func (ty *OnewayBot) GetSide(posside, openClose string) string {
-
-	tmpposside := strings.ToUpper(posside)
-	tmpopenClose := strings.ToUpper(openClose)
-
-	if tmpposside == "LONG" && tmpopenClose == "OPEN" {
-		return "BUY"
-	}
-	if tmpposside == "LONG" && tmpopenClose == "CLOSE" {
-		return "SELL"
-	}
-	if tmpposside == "LONG" && tmpopenClose == "OPEN" {
-		return "SELL"
-	}
-	if tmpposside == "LONG" && tmpopenClose == "CLOSE" {
-		return "BUY"
-	}
-
-	return ""
-
-}
-
-// 현재가 가져오기
-func (ty *OnewayBot) GetCurrentPrice() string {
-
-	symbol := ty.mConfigData.Symbol
-	res, err := binance.GetTicker(symbol)
-	if err != nil {
-		errors.Error("Error - OnewayBot GetCurrentPrice ", err)
-		return ""
-	}
-
-	for _, v := range res {
-		if v.Symbol == symbol {
-			return v.LastPrice
-		}
-	}
-
-	return ""
-}
+// 	return nil
+// }
 
 // positionSide 변경 하기
 func (ty *OnewayBot) GetPositionSide(b bool) string {
@@ -593,7 +459,7 @@ func (ty *OnewayBot) GetPrice(side string) string {
 	// 1은 현재를 가져오기 때문에 괜찮음
 	if ty.mRound == 1 {
 		// 시장가를 가져옵니다.
-		return ty.GetCurrentPrice()
+		// return ty.GetCurrentPrice()
 	}
 
 	res := ty.mbinanceAccount.GetUserPositions()

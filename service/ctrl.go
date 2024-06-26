@@ -78,14 +78,14 @@ func (ty *Controller) StartBot(args BotConfigStruct) error {
 		}
 	*/
 
+	// 저장하고 실행하자 !!
+
 	return nil
 }
 
 // 유저 봇 정지 - 봇을 정지하기 위해서 어떤 값들이 필요할까?
 func (ty *Controller) StopBot(userid string, aa interface{}) error {
-
 	bot := ty.mUserMap[userid]
-
 	for k, v := range bot.BotObject {
 		fmt.Println(k, v)
 	}

@@ -41,7 +41,7 @@ func (ty *BinanceUser) SendOrderMarket(symbol, position, openclose, amount strin
 	order.Side = SideType(GetSide(position, openclose)) // SideTypeBuy SideTypeSell
 	order.OrderType = futures.OrderTypeMarket           // OrderTypeLimit OrderTypeMarket
 	order.Quantity = amount
-	order.TimeInForce = futures.TimeInForceTypeGTC
+	// order.TimeInForce = futures.TimeInForceTypeGTC
 	res, err := ty.CreateOrderService(order)
 	if err != nil {
 		return nil, err
@@ -59,6 +59,7 @@ func (ty *BinanceUser) SendOrderTakeProfit(symbol, position, openclose, price st
 	order.StopPrice = price
 	order.ClosePosition = true
 	order.WorkingType = futures.WorkingTypeContractPrice // WorkingTypeContractPrice
+	fmt.Printf("order : %+v", order)
 	res, err := ty.CreateOrderService(order)
 	if err != nil {
 		return nil, err
@@ -97,8 +98,8 @@ func (ty *BinanceUser) SendOrderStopMarket(symbol, position, openclose, price, a
 	order.PositionSide = PositionSide(position)         // PositionSideTypeLong PositionSideTypeShort
 	order.Side = SideType(GetSide(position, openclose)) // SideTypeBuy SideTypeSell
 	order.OrderType = futures.OrderTypeStopMarket       // OrderTypeLimit OrderTypeMarket OrderTypeTakeProfitMarket
-	order.StopPrice = "0.2150"
-	order.Quantity = "500"
+	order.StopPrice = price
+	order.Quantity = amount
 	order.ClosePosition = false
 	order.WorkingType = futures.WorkingTypeContractPrice // WorkingTypeContractPrice
 	res, err := ty.CreateOrderService(order)
@@ -137,14 +138,10 @@ func (ty *BinanceUser) SendRemoveOpenOrderForSymbol(symbol string) []string {
 		fmt.Println(err)
 	}
 
-	var orderID []int64
+	var orderID []string
 	for _, v := range res {
 		val := utils.String(v.ClientOrderID)
-		oriClientID, err := utils.Int64(val)
-		if err != nil {
-			fmt.Println("utils.Int64 : ", err)
-		}
-		orderID = append(orderID, oriClientID)
+		orderID = append(orderID, val)
 	}
 
 	msg := ty.SendRemoveOpenOrder(symbol, orderID)
@@ -156,13 +153,12 @@ func (ty *BinanceUser) SendRemoveOpenOrderForSymbol(symbol string) []string {
 }
 
 // 해당 미체결 모두 정리
-func (ty *BinanceUser) SendRemoveOpenOrder(symbol string, orderID []int64) []string {
+func (ty *BinanceUser) SendRemoveOpenOrder(symbol string, orderID []string) []string {
 	var send []string
 	for _, v := range orderID {
-		val := utils.String(v)
-		_, err := ty.CancelOrder(symbol, val)
+		_, err := ty.CancelOrder(symbol, v)
 		if err != nil {
-			send = append(send, fmt.Sprintf("%s %s", val, err))
+			send = append(send, fmt.Sprintf("%s %s", v, err))
 		}
 	}
 	return send
@@ -174,7 +170,7 @@ func SideType(sidetype string) futures.SideType {
 		return futures.SideTypeBuy
 	}
 
-	if sidetype == "BUY" {
+	if sidetype == "SELL" {
 		return futures.SideTypeSell
 	}
 	return ""
@@ -205,10 +201,10 @@ func GetSide(posside, openClose string) string {
 	if tmpposside == "LONG" && tmpopenClose == "CLOSE" {
 		return "SELL"
 	}
-	if tmpposside == "LONG" && tmpopenClose == "OPEN" {
+	if tmpposside == "SHORT" && tmpopenClose == "OPEN" {
 		return "SELL"
 	}
-	if tmpposside == "LONG" && tmpopenClose == "CLOSE" {
+	if tmpposside == "SHORT" && tmpopenClose == "CLOSE" {
 		return "BUY"
 	}
 

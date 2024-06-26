@@ -7,7 +7,12 @@ type UserInfo struct {
 	AccessKey string // key
 	SecritKey string // key
 
-	BotObject map[string]InterfaceBot // key 종목+포지션 =
+	BotObject map[string]InterfaceBot // key 종목+포지션
+	// 웹소켓 연결 하기
+	/*
+		체결시 broadcase로 각각 bot 에 전달하기
+	*/
+	WSObject BinanceUserWSObject
 }
 
 // 초기화
@@ -17,5 +22,26 @@ func (ty *UserInfo) Init(AccessKey, SecritKey string) {
 	ty.BotObject = make(map[string]InterfaceBot)
 }
 
-///////// 여기에는 각각 필요한 사람 /////////
-///////// 뭐가 필요할지 생각하기 ///////
+// 웹소켓 연결하기
+func (ty *UserInfo) WSConnection() {
+
+	ty.onConnect()
+	ty.onUnConnect()
+	ty.onMessage()
+
+}
+
+// 연결시
+func (ty *UserInfo) onConnect() {
+
+}
+
+// 해제시
+func (ty *UserInfo) onUnConnect() {
+
+}
+
+// 메시지 전달시
+func (ty *UserInfo) onMessage() {
+
+}

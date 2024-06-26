@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"log"
 	"onewayorder/errors"
+	"onewayorder/util"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -51,12 +52,8 @@ func TestGetExchangeInfo(t *testing.T) {
 }
 
 // 미체결 리스트 리턴
-
 func TestGetOpenOrder(t *testing.T) {
 	basic := GetBasicInit()
-	basic.SetSymbol("DOGEUSDT")
-	basic.SetLeverage("20")
-
 	res := basic.GetOpenOrder("")
 	if len(res) == 0 {
 		fmt.Println(" 없음 ")
@@ -64,8 +61,11 @@ func TestGetOpenOrder(t *testing.T) {
 	}
 
 	for _, v := range res {
-		fmt.Println(v)
+		//fmt.Println(v)
+		str := util.JsonData(v)
+		fmt.Println(str)
 	}
+
 }
 
 func TestGetPositionList(t *testing.T) {
@@ -250,24 +250,34 @@ func TestCheckMaxAmount(t *testing.T) {
 // 	basic := GetBasicInit()
 // }
 
+// 미체결 테스트
 func TestSendOpenOrder(t *testing.T) {
-	//	func (ty *BasicInfo) SendOpenOrder(position, side, price, amount string) (*futures.CreateOrderResponse, error) {
+
 	basic := GetBasicInit()
 	position := "LONG"
 	side := "OPEN"
 	price := "0.1017"
-	amount := "1000"
+	amount := "10000"
 	res, err := basic.SendOpenOrder(position, side, price, amount)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Printf("%+v\n", res)
+	data := util.JsonData(res)
+	fmt.Printf("%+v\n", data)
+
+	errmsg := res.Errors[0]
+	codemsg, err := util.ParseError(errmsg)
+	if err != nil {
+		fmt.Println(err)
+	}
+
+	fmt.Printf("errmsg.msg : %v %s", codemsg.Code, codemsg.Message)
 
 }
 
+// 마켓주문 테스트
 func TestSendMarketOrder(t *testing.T) {
-	//	func (ty *BasicInfo) SendMarketOrder(symbol, position, openclose, price string) (*futures.CreateOrderResponse, error) {
 	basic := GetBasicInit()
 	symbol := "DOGEUSDT"
 	position := "LONG"
@@ -278,10 +288,10 @@ func TestSendMarketOrder(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	fmt.Sprintf("%+v\n", res)
-
+	fmt.Printf("%+v\n", res)
 }
 
+// 익절 테스트
 func TestSendTakeProfit(t *testing.T) {
 	//	func (ty *BasicInfo) SendTakeProfit(symbol, position, openclose, price string) (*futures.CreateOrderResponse, error) {
 	basic := GetBasicInit()
@@ -289,14 +299,15 @@ func TestSendTakeProfit(t *testing.T) {
 	position := "LONG"
 	openclose := "CLOSE"
 	price := "0.1270"
-	res, err := basic.SendMarketOrder(symbol, position, openclose, price)
+	res, err := basic.SendTakeProfit(symbol, position, openclose, price)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Sprintf("%+v\n", res)
+	fmt.Printf("%+v\n", res)
 }
 
+// 손절 테스트
 func TestSendStopLoss(t *testing.T) {
 	//	func (ty *BasicInfo) SendStopLoss(symbol, position, openclose, price string) error {
 	basic := GetBasicInit()
@@ -309,54 +320,64 @@ func TestSendStopLoss(t *testing.T) {
 		fmt.Println(err)
 	}
 
-	fmt.Sprintf("%+v\n", res)
+	fmt.Printf("%+v\n", res)
 }
 
+// stop Market 조건부 주문
 func TestSendStopMarket(t *testing.T) {
 	//	func (ty *BasicInfo) SendStopMarket(symbol, positionside, openclose, price, amount string) error {
 	basic := GetBasicInit()
 	symbol := "DOGEUSDT"
 	positionside := "SHORT"
 	openclose := "OPEN"
-	price := "0.1070"
-	amount := "1000"
+	price := "0.12258"
+	amount := "600"
 	res, err := basic.SendStopMarket(symbol, positionside, openclose, price, amount)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Sprintf("%+v\n", res)
+	fmt.Printf("%+v\n", res)
 }
 
+// 주문 취소하기 -
 func TestCancelOrder(t *testing.T) {
 	//	func (ty *BasicInfo) CancelOrder(symbol, ClientOrderID string) (*futures.CancelOrderResponse, error) {
 	basic := GetBasicInit()
 	symbol := "DOGEUSDT"
-	ClientOrderID := "123123123"
+	ClientOrderID := "I1XqnYAUifMYT6S0KROc8W" // ClientOrderID
 	res, err := basic.CancelOrder(symbol, ClientOrderID)
 	if err != nil {
 		fmt.Println(err)
 	}
 
-	fmt.Sprintf("%+v\n", res)
+	fmt.Printf("%+v\n", res)
 }
 
+// 해당 Symbol 미체결 모두 제거
 func TestSendRemoveOpenOrder(t *testing.T) {
 	//	func (ty *BasicInfo) SendRemoveOpenOrder() []string {
 	basic := GetBasicInit()
 	res := basic.SendRemoveOpenOrder()
-	fmt.Sprintf("%+v\n", res)
+	fmt.Printf("%+v\n", res)
 }
 
+// 해당 Symbol 포지션 제거
 func TestSendClosePosition(t *testing.T) {
 	//	func (ty *BasicInfo) SendClosePosition(position string) error {
 	basic := GetBasicInit()
 	position := "LONG"
+	// position := "SHORT"
 	res, err := basic.SendClosePosition(position)
 	if err != nil {
 		fmt.Println(err)
+		apierr, err := util.ParseError(err)
+		if err != nil {
+			fmt.Println(err)
+			fmt.Printf("apierr: %s , %s\n", apierr.Code, apierr.Message)
+		}
 	}
 
-	fmt.Sprintf("%+v\n", res)
-
+	str := util.JsonData(res)
+	fmt.Println("str : ", str)
 }
